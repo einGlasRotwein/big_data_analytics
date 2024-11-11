@@ -2,62 +2,68 @@
 
 
 #libs, yo!
-library(DBI)
-library(RPostgres)
-library(janitor)
+# library(DBI)
+# library(RPostgres)
+# library(janitor)
+library(tidyverse)
 
 
 #Reading and cleaning the data! BIG DATA!
 intel <- read.csv("clean.csv")		#Reading
 intel <- janitor::clean_names(intel)	#Cleaning the column names
 
-#Removing units from data, so not every data type ends up as "text"
-intel$max_turbo_taktfrequenz <- as.numeric(gsub(" GHz", "", intel$max_turbo_taktfrequenz))
-intel$lithographie <- gsub("Intel 7", "10 nm", intel$lithographie)
-intel$lithographie <- as.numeric(gsub(" nm", "", intel$lithographie))
-intel$intel_turbo_boost_technik_2_0_taktfrequenz <- as.numeric(gsub(" GHz", "", intel$intel_turbo_boost_technik_2_0_taktfrequenz))
-intel$grundtaktfrequenz_des_prozessors <- gsub(" \\| ", ".", intel$grundtaktfrequenz_des_prozessors)
-intel$grundtaktfrequenz_des_prozessors <- as.numeric(gsub(" GHz", "", intel$grundtaktfrequenz_des_prozessors))
-intel$cache <- gsub(" MB Intel® Smart Cache", "", intel$cache)
-intel$cache <- as.numeric(gsub(" MB", "", intel$cache))
-intel$bus_taktfrequenz <- as.numeric(gsub(" GT/s", "", intel$bus_taktfrequenz))
-intel$verlustleistung_tdp <- as.numeric(gsub(" W", "", intel$verlustleistung_tdp))
+# unavoidable manual corrections
+intel$lithographie[intel$lithographie == "Intel 7"] <- "10 nm"
+intel$x4k_unterstutzung <- gsub("Yes \\|  at ", "", intel$x4k_unterstutzung)
+intel$x4k_unterstutzung <- gsub("Hz", " Hz", intel$x4k_unterstutzung)
+intel$cache <- gsub(" Intel® Smart Cache", "", intel$cache)
+intel$e_core_base_frequency[intel$e_core_base_frequency == "900 MHz"] <- "0.9 GHz"
+intel$bus_taktfrequenz <- gsub("\\/", "_per_", intel$bus_taktfrequenz)
 intel$intel_turbo_boost_max_technology_3_0_frequency <- gsub(" \\| ", ".", intel$intel_turbo_boost_max_technology_3_0_frequency)
-intel$intel_turbo_boost_max_technology_3_0_frequency <- as.numeric(gsub(" GHz", "", intel$intel_turbo_boost_max_technology_3_0_frequency))
-intel$single_p_core_turbo_frequency <- as.numeric(gsub(" GHz", "", intel$single_p_core_turbo_frequency))
-intel$single_e_core_turbo_frequency <- as.numeric(gsub(" GHz", "", intel$single_e_core_turbo_frequency))
-intel$e_core_base_frequency <- gsub(" GHz", "", intel$e_core_base_frequency)
-intel$e_core_base_frequency <- as.numeric(gsub("900 MHz", "0.9", intel$e_core_base_frequency))
-intel$total_l2_cache <- as.numeric(gsub(" MB", "", intel$total_l2_cache))
-intel$processor_base_power <- as.numeric(gsub(" W", "", intel$processor_base_power))
-intel$maximum_turbo_power <- as.numeric(gsub(" W", "", intel$maximum_turbo_power))
-intel$grundtaktfrequenz_der_grafik <- as.numeric(gsub(" MHz", "", intel$grundtaktfrequenz_der_grafik))
-intel$max_dynamische_grafikfrequenz <- as.numeric(gsub(" GHz", "", intel$max_dynamische_grafikfrequenz))
-intel$max_videospeicher_der_grafik <- as.numeric(gsub(" GB", "", intel$max_videospeicher_der_grafik))
-intel$x4k_unterstutzung <- gsub("Hz", "", intel$x4k_unterstutzung)
-intel$x4k_unterstutzung <- as.numeric(gsub("Yes \\|  at ", "", intel$x4k_unterstutzung))
+intel$grundtaktfrequenz_des_prozessors <- gsub(" \\| ", ".", intel$grundtaktfrequenz_des_prozessors)
 
+cols_of_interest <- 
+  c(
+    "max_turbo_taktfrequenz", "lithographie", "intel_turbo_boost_technik_2_0_taktfrequenz", 
+    "grundtaktfrequenz_des_prozessors", "cache", "bus_taktfrequenz", "verlustleistung_tdp", 
+    "intel_turbo_boost_max_technology_3_0_frequency", "single_p_core_turbo_frequency", 
+    "single_e_core_turbo_frequency", "e_core_base_frequency", "total_l2_cache", 
+    "processor_base_power", "maximum_turbo_power", "grundtaktfrequenz_der_grafik", 
+    "max_dynamische_grafikfrequenz", "max_videospeicher_der_grafik", "x4k_unterstutzung"
+  )
 
-#Putting the units back into the column name, so we actually know what unit we are talking about
-colnames(intel)[colnames(intel) == "max_turbo_taktfrequenz"] <- "max_turbo_taktfrequenz_GHz"
-colnames(intel)[colnames(intel) == "lithographie"] <- "litographie_nm"
-colnames(intel)[colnames(intel) == "intel_turbo_boost_technik_2_0_taktfrequenz"] <- "intel_turbo_boost_technik_2_0_taktfrequenz_GHz"
-colnames(intel)[colnames(intel) == "grundtaktfrequenz_des_prozessors"] <- "grundtaktfrequenz_des_prozessors_GHz"
-colnames(intel)[colnames(intel) == "cache"] <- "cache_MB"
-colnames(intel)[colnames(intel) == "bus_taktfrequenz"] <- "bus_taktfrequenz_GT_per_s"
-colnames(intel)[colnames(intel) == "verlustleistung_tdp"] <- "verlustleistung_tdp_W"
-colnames(intel)[colnames(intel) == "intel_turbo_boost_max_technology_3_0_frequency"] <- "intel_turbo_boost_max_technology_3_0_frequency_GHz"
-colnames(intel)[colnames(intel) == "single_p_core_turbo_frequency"] <- "single_p_core_turbo_frequency_GHz"
-colnames(intel)[colnames(intel) == "single_e_core_turbo_frequency"] <- "single_e_core_turbo_frequency_GHz"
-colnames(intel)[colnames(intel) == "e_core_base_frequency"] <- "e_core_base_frequency_GHz"
-colnames(intel)[colnames(intel) == "total_l2_cache"] <- "total_l2_cache_MB"
-colnames(intel)[colnames(intel) == "processor_base_power"] <- "processor_base_power_W"
-colnames(intel)[colnames(intel) == "maximum_turbo_power"] <- "maximum_turbo_power_W"
-colnames(intel)[colnames(intel) == "grundtaktfrequenz_der_grafik"] <- "grundtaktfrequenz_der_grafik_MHz"
-colnames(intel)[colnames(intel) == "max_dynamische_grafikfrequenz"] <- "max_dynamische_grafikfrequenz_GHz"
-colnames(intel)[colnames(intel) == "max_videospeicher_der_grafik"] <- "max_videospeicher_der_grafik_GB"
-colnames(intel)[colnames(intel) == "x4k_unterstutzung"] <- "x4k_unterstutzung_at"
+# Extract units and append to column name
+# ('cause units will be deleted later so only numeric values remain)
+# unit can always be found as the last letters after the last whitespace
+column_units <- 
+  apply(intel[cols_of_interest], 2, function(x) {
+    unit <- unique(gsub(".*\\s([a-zA-Z_]+)$", "\\1", x))
+    unit[unit != ""] # ignore empty cells
+  })
 
+# remove units, and make columns numeric
+intel <- 
+  intel %>% 
+  mutate(
+    across(
+      cols_of_interest, 
+      ~as.numeric(
+        ifelse(
+          gsub("\\s[a-zA-Z_]+$", "", .) == "", 
+          NA, 
+          gsub("\\s[a-zA-Z_]+$", "", .)
+        )
+      )
+    )
+  )
+
+# append units to column names
+intel <- 
+  intel %>% 
+  rename_at(
+    vars(names(column_units)), ~ 
+      paste0(names(column_units), "_", column_units)
+  )
 
 #database shizz (Raw SQL is scary)
 con <- dbConnect(
